@@ -37,6 +37,7 @@ Users can **register**, **rotate**, **revoke**, and **view** their cryptographic
 ### 1️⃣ Clone this repository
 
 ```bash
-git clone https://github.com/<your-username>/key-dapp.git
+git clone https://github.com/<ognjenobravocikg>/-Decentralized-Public-Key-Manager
 cd key-dapp
 ```
+
