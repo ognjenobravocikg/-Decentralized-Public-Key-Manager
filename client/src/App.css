@@ -1,0 +1,114 @@
+/* === Global Styles === */
+body {
+  margin: 0;
+  background-color: #121212;
+  color: #e0e0e0;
+  font-family: "Inter", Arial, sans-serif;
+}
+
+/* === Layout === */
+.app {
+  padding: 30px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  color: #aaa;
+  margin-bottom: 30px;
+  font-size: 16px;
+}
+
+/* === Sections === */
+.section {
+  background-color: #1f1f1f;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* === Buttons === */
+button {
+  padding: 10px 18px;
+  margin: 6px;
+  border-radius: 8px;
+  border: none;
+  background-color: #2979ff;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+button:hover {
+  background-color: #5393ff;
+  transform: scale(1.03);
+}
+
+button:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+}
+
+/* === Inputs & Selects === */
+input,
+select {
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  padding: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #2979ff;
+}
+
+/* === Status === */
+.status {
+  font-weight: 600;
+  margin: 15px 0;
+}
+
+/* === History === */
+.history-container {
+  max-height: 350px;
+  overflow-y: auto;
+  padding: 10px;
+  background-color: #181818;
+  border-radius: 8px;
+  border: 1px solid #222;
+}
+
+.history-item {
+  background-color: #222;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #333;
+}
+
+.history-item b {
+  color: #90caf9;
+}
+
+/* === Scrollbar (for history section) === */
+.history-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.history-container::-webkit-scrollbar-thumb {
+  background-color: #444;
+  border-radius: 4px;
+}
