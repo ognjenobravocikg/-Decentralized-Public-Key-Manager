@@ -1,0 +1,35 @@
+# Node dependencies
+node_modules/
+client/node_modules/
+manager/node_modules/
+
+# Build artifacts
+build/
+dist/
+.cache/
+coverage/
+.env
+manager/.env
+client/.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Compiled contracts (optional)
+manager/build/contracts/
+
+# VSCode settings
+.vscode/
+
+# Exclude executables and binaries
+*.exe
+*.dll
+*.so
+*.dylib
