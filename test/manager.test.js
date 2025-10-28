@@ -1,125 +1,97 @@
-const Manager = artifacts.require("Manager");
 const { expect } = require("chai");
-const { ethers } = require("ethers");
+const { expectRevert, time } = require("@openzeppelin/test-helpers");
+
+const Manager = artifacts.require("Manager");
 
 contract("Manager", (accounts) => {
-  let instance;
-  const [owner, other] = accounts;
+  const user = accounts[1];
+
+  let manager;
 
   beforeEach(async () => {
-    instance = await Manager.new({ from: owner });
+    manager = await Manager.new();
   });
 
-  function ethSignedMessageHash(messageBytes) {
-    // utility: ethers.utils.hashMessage does the toEthSignedMessageHash transformation
-    return ethers.utils.hashMessage(messageBytes);
-  }
-
-  it("registers a key with valid signature", async () => {
-    const publicKey = ethers.utils.toUtf8Bytes("fake-key-1");
-    const alg = "ed25519";
-    const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1h from now
-
-    // create the challenge same as contract: keccak256("RegisterKey:", publicKey, alg, expiresAt, contractAddress)
-    const messageHashBytes = ethers.utils.solidityKeccak256(
-      ["string", "bytes", "string", "uint256", "address"],
-      ["RegisterKey:", publicKey, alg, expiresAt, instance.address]
-    );
-    const messageHashBytesArray = ethers.utils.arrayify(messageHashBytes);
-
-    // use web3.eth.sign via accounts[0] (Truffle provider) to sign the message
-    const signature = await web3.eth.sign(
-      ethers.utils.hexlify(messageHashBytesArray),
-      owner
-    );
-
-    // call registerKey
-    await instance.registerKey(publicKey, alg, expiresAt, signature, {
-      from: owner,
-    });
-
-    const count = await instance.getHistoryCount(owner);
-    expect(count.toNumber()).to.equal(1);
-
-    const entry = await instance.getKey(owner, 0);
-    expect(entry.alg).to.equal(alg);
-  });
-
-  it("rejects registration with bad signature", async () => {
-    const publicKey = ethers.utils.toUtf8Bytes("fake-key-2");
-    const alg = "ed25519";
+  it("should register a key", async () => {
+    const pubKey = "0x1234567890";
     const expiresAt = 0;
 
-    const messageHashBytes = ethers.utils.solidityKeccak256(
-      ["string", "bytes", "string", "uint256", "address"],
-      ["RegisterKey:", publicKey, alg, expiresAt, instance.address]
-    );
-    const messageHashBytesArray = ethers.utils.arrayify(messageHashBytes);
+    const tx = await manager.registerKey(pubKey, "ed25519", expiresAt, {
+      from: user,
+    });
 
-    // sign with other account, not owner
-    const signature = await web3.eth.sign(
-      ethers.utils.hexlify(messageHashBytesArray),
-      other
-    );
+    expect(tx.logs[0].event).to.equal("KeyRegistered");
 
-    try {
-      await instance.registerKey(publicKey, alg, expiresAt, signature, {
-        from: owner,
-      });
-      throw new Error("should have reverted");
-    } catch (err) {
-      assert(
-        err.message.includes("invalid signature") ||
-          err.message.includes("revert"),
-        "expected revert for invalid signature"
-      );
-    }
+    const count = await manager.getHistoryCount(user);
+    expect(count.toNumber()).to.equal(1);
+
+    const key = await manager.getKey(user, 0);
+    expect(key.publicKey).to.equal(pubKey);
+    expect(key.revoked).to.equal(false);
   });
 
-  it("rotates key and sets history", async () => {
-    // register first
-    const pk1 = ethers.utils.toUtf8Bytes("k1");
-    const alg = "ed25519";
-    const t1 = Math.floor(Date.now() / 1000) + 3600;
+  it("should rotate a key and add history", async () => {
+    const pubKey1 = "0xaaaa";
+    const pubKey2 = "0xbbbb";
 
-    const h1 = ethers.utils.solidityKeccak256(
-      ["string", "bytes", "string", "uint256", "address"],
-      ["RegisterKey:", pk1, alg, t1, instance.address]
-    );
-    const sig1 = await web3.eth.sign(h1, owner);
-    await instance.registerKey(pk1, alg, t1, sig1, { from: owner });
+    await manager.registerKey(pubKey1, "ed25519", 0, { from: user });
 
-    // rotate to pk2
-    const pk2 = ethers.utils.toUtf8Bytes("k2");
-    const t2 = Math.floor(Date.now() / 1000) + 7200;
-    const h2 = ethers.utils.solidityKeccak256(
-      ["string", "bytes", "string", "uint256", "address"],
-      ["RotateKey:", pk2, alg, t2, instance.address]
-    );
-    const sig2 = await web3.eth.sign(h2, owner);
-    await instance.rotateKey(pk2, alg, t2, sig2, { from: owner });
+    const tx = await manager.rotateKey(pubKey2, "rsa", 0, { from: user });
+    expect(tx.logs[0].event).to.equal("KeyRotated");
 
-    const count = (await instance.getHistoryCount(owner)).toNumber();
-    expect(count).to.equal(2);
+    const count = await manager.getHistoryCount(user);
+    expect(count.toNumber()).to.equal(2);
 
-    const active = await instance.getActiveKeyIndex(owner);
-    // active[0] is found boolean in truffle return format; active[1] is index
-    // convert appropriately
+    const active = await manager.getActiveKey(user);
+    expect(active.publicKey).to.equal(pubKey2);
   });
 
-  it("revokes a key", async () => {
-    const pk1 = ethers.utils.toUtf8Bytes("k1rev");
-    const alg = "ed25519";
-    const t1 = 0;
-    const h1 = ethers.utils.solidityKeccak256(
-      ["string", "bytes", "string", "uint256", "address"],
-      ["RegisterKey:", pk1, alg, t1, instance.address]
-    );
-    const sig1 = await web3.eth.sign(h1, owner);
-    await instance.registerKey(pk1, alg, t1, sig1, { from: owner });
+  it("should revoke a key", async () => {
+    const pubKey = "0x1122";
+    await manager.registerKey(pubKey, "ed25519", 0, { from: user });
 
-    await instance.revokeKey(0, { from: owner });
-    const key = await instance.getKey(owner, 0);
-    assert(key.revoked === true || key[4] === true, "key should be revoked");
+    const tx = await manager.revokeKey(0, { from: user });
+    expect(tx.logs[0].event).to.equal("KeyRevoked");
+
+    const key = await manager.getKey(user, 0);
+    expect(key.revoked).to.equal(true);
+
+    const active = await manager.getActiveKey(user);
+    expect(active.found).to.equal(false);
+  });
+
+  it("should return the most recent non-revoked key as active", async () => {
+    const k1 = "0xaaaa";
+    const k2 = "0xbbbb";
+
+    await manager.registerKey(k1, "ed25519", 0, { from: user });
+    await manager.registerKey(k2, "rsa", 0, { from: user });
+
+    await manager.revokeKey(1, { from: user });
+
+    const active = await manager.getActiveKey(user);
+    expect(active.publicKey).to.equal(k1);
+  });
+
+  it("should ignore expired keys", async () => {
+    const now = await time.latest();
+    const expiredTime = now.toNumber() - 100;
+    const futureTime = now.toNumber() + 3600;
+
+    const k1 = "0x1111";
+    const k2 = "0x2222";
+
+    await manager.registerKey(k1, "ed25519", expiredTime, { from: user });
+    await manager.registerKey(k2, "ed25519", futureTime, { from: user });
+
+    const active = await manager.getActiveKey(user);
+    expect(active.publicKey).to.equal(k2);
+  });
+
+  it("should fail revoking non-existing index", async () => {
+    await expectRevert(
+      manager.revokeKey(5, { from: user }),
+      "Index out of range"
+    );
   });
 });
